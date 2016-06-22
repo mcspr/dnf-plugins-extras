@@ -47,6 +47,11 @@ The minimal plugin configuration file should consists of `[main]` section with `
 
     Defines whether plugin should only display file differences.
 
+``unattended``
+    either one of ``maintainer``, ``user``, default: Unset
+
+    Defines how it will handle .rpmnew, .rpmsave and .rpmorig files without need of user interaction. ``maintainer`` always uses maintainer files, ``user`` always keeps user modified files
+
 --------
 See Also
 --------

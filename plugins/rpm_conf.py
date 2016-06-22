@@ -22,7 +22,58 @@ import errno
 from dnfpluginsextras import _, logger
 
 import dnf
+import filecmp
 from rpmconf import rpmconf
+
+
+class UnattendedRpmConf(rpmconf.RpmConf):
+
+    def __init__(self, *args, **kwargs):
+        self.unattended = kwargs.pop('unattended', None)
+        super().__init__(*args, **kwargs)
+
+    def _handle_rpmnew(self, conf_file, other_file):
+        """
+        Depends on instance attribute `unattended`:
+
+        * `maintainer` install the package maintainer's version
+        * `user` keep currently-installed version
+
+        If attribute is not set, reverts to the original method
+        """
+
+        if self.diff or not self.unattended:
+            super()._handle_rpmnew(conf_file, other_file)
+            return
+
+        if self.unattended == 'maintainer':
+            self._overwrite(other_file, conf_file)
+        elif self.unattended == 'user':
+            self._remove(other_file)
+
+    def _handle_rpmsave(self, conf_file, other_file):
+        """
+        Depends on instance attribute `unattended`:
+
+        * `maintainer` install (keep) the package maintainer's version
+        * `user` return back to the original / saved file
+
+        If attribute is not set, reverts to the original method
+        """
+
+        if self.diff or not self.unattended:
+            super()._handle_rpmsave(conf_file, other_file)
+            return
+
+        if not (self.is_broken_symlink(conf_file) or self.is_broken_symlink(other_file)) \
+           and filecmp.cmp(conf_file, other_file):
+            self._remove(other_file)
+            return
+
+        if self.unattended == 'maintainer':
+            self._remove(other_file)
+        elif self.unattended == 'user':
+            self._overwrite(other_file, conf_file)
 
 
 class Rpmconf(dnf.Plugin):
@@ -34,6 +85,7 @@ class Rpmconf(dnf.Plugin):
         self.packages = []
         self.frontend = None
         self.diff = None
+        self.unattended = None
 
     def config(self):
         self._interactive = True
@@ -54,6 +106,13 @@ class Rpmconf(dnf.Plugin):
         else:
             self.frontend = None
 
+        if conf.has_option('main', 'unattended'):
+            self.unattended = conf.get('main', 'unattended')
+            if self.unattended not in ('maintainer', 'user'):
+                self.unattended = None
+        else:
+            self.unattended = None
+
     def resolved(self):
         if not self._interactive:
             return
@@ -69,15 +128,18 @@ class Rpmconf(dnf.Plugin):
                 self.packages.append(pkg.name)
 
     def transaction(self):
-        if not self._interactive:
-            logger.debug(_("rpmconf plugin will not run "
-                           "in non-interactive mode"))
+        if all((not self.unattended,
+                not self._interactive)):
+            logger.debug(_("rpmconf plugin will not run in "
+                           "non-interactive mode without "
+                           "`unattended` turned on"))
             return
 
-        rconf = rpmconf.RpmConf(
+        rconf = UnattendedRpmConf(
             packages=self.packages,
             frontend=self.frontend,
-            diff=self.diff)
+            diff=self.diff,
+            unattended=self.unattended)
         try:
             rconf.run()
         except SystemExit as e:

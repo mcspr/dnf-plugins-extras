@@ -54,6 +54,7 @@ class RpmconfPluginStub(object):
         self.packages = [pkgname]
         self.frontend = None
         self.diff = None
+        self.unattended = None
         self._interactive = True
         self._conf_file = conf_file
 
@@ -115,6 +116,97 @@ class TestRpmConf(unittest.TestCase):
 
     def _create_rpmsave(self):
         return create_file(*self.conf_file_rpmsave)
+
+    def test_maintainer_rpmnew(self):
+        c_path, c_content = self._create_conf()
+        new_path, new_content = self._create_rpmnew()
+
+        with self.rpmconf_plugin as rpmconf:
+            rpmconf.unattended = 'maintainer'
+            rpmconf.run()
+
+        self.assertFalse(os.access(new_path, os.F_OK))
+        self.assertTrue(os.access(c_path, os.F_OK))
+
+        with open(c_path, 'rb') as f:
+            c_result = f.read()
+
+        self.assertEqual(c_result, new_content)
+
+    def test_maintainer_rpmsave(self):
+        c_path, c_content = self._create_conf()
+        saved_path, saved_content = self._create_rpmsave()
+
+        with self.rpmconf_plugin as rpmconf:
+            rpmconf.unattended = 'maintainer'
+            rpmconf.run()
+
+        self.assertFalse(os.access(saved_path, os.F_OK))
+        self.assertTrue(os.access(c_path, os.F_OK))
+
+        with open(c_path, 'rb') as f:
+            c_result = f.read()
+        self.assertEqual(c_result, c_content)
+
+    def test_maintainer_rpmorig(self):
+        c_path, c_content = self._create_conf()
+        saved_path, saved_content = self._create_rpmorig()
+
+        with self.rpmconf_plugin as rpmconf:
+            rpmconf.unattended = 'maintainer'
+            rpmconf.run()
+
+        self.assertFalse(os.access(saved_path, os.F_OK))
+        self.assertTrue(os.access(c_path, os.F_OK))
+
+        with open(c_path, 'rb') as f:
+            c_result = f.read()
+        self.assertEqual(c_result, c_content)
+
+    def test_user_rpmnew(self):
+        c_path, c_content = self._create_conf()
+        new_path, new_content = self._create_rpmnew()
+
+        with self.rpmconf_plugin as rpmconf:
+            rpmconf.unattended = 'user'
+            rpmconf.run()
+
+        self.assertFalse(os.access(new_path, os.F_OK))
+        self.assertTrue(os.access(c_path, os.F_OK))
+
+        with open(c_path, 'rb') as f:
+            c_result = f.read()
+        self.assertEqual(c_result, c_content)
+
+    def test_user_rpmsave(self):
+        c_path, c_content = self._create_conf()
+        saved_path, saved_content = self._create_rpmsave()
+
+        with self.rpmconf_plugin as rpmconf:
+            rpmconf.unattended = 'user'
+            rpmconf.run()
+
+        self.assertFalse(os.access(saved_path, os.F_OK))
+        self.assertTrue(os.access(c_path, os.F_OK))
+
+        with open(c_path, 'rb') as f:
+            c_result = f.read()
+        self.assertEqual(c_result, saved_content)
+
+    def test_user_rpmorig(self):
+        c_path, c_content = self._create_conf()
+        saved_path, saved_content = self._create_rpmorig()
+
+        with self.rpmconf_plugin as rpmconf:
+            rpmconf.unattended = 'user'
+            rpmconf.run()
+
+        self.assertFalse(os.access(saved_path, os.F_OK))
+        self.assertTrue(os.access(c_path, os.F_OK))
+
+        with open(c_path, 'rb') as f:
+            c_result = f.read()
+        self.assertEqual(c_result, saved_content)
 
     def test_non_interactive(self):
         c_path, c_content = self._create_conf()
