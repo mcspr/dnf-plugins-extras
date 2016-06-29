@@ -42,15 +42,11 @@ The minimal plugin configuration file should consists of `[main]` section with `
     Defines which frontend should be used for merging. For list of valid frontends see :manpage:`rpmconf(8)`.
     When set to ``env``, the command to use is taken from the environment variable $MERGE.
 
-``diff``
-    boolean, default: False
-
-    Defines whether plugin should only display file differences.
-
 ``unattended``
-    either one of ``maintainer``, ``user``, default: Unset
+    either one of ``diff``, ``maintainer``, ``user``, default: Unset
 
-    Defines how it will handle .rpmnew, .rpmsave and .rpmorig files without need of user interaction. ``maintainer`` always uses maintainer files, ``user`` always keeps user modified files
+    Defines how it will handle .rpmnew, .rpmsave and .rpmorig files without need of user interaction. ``maintainer`` will always replace user files with maintainer's files, ``user`` will always keep user modified files (or restore them from .rpmsave)
+    ``diff`` does not change any files and just displays their differences.
 
 --------
 See Also
