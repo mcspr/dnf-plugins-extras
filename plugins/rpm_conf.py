@@ -32,21 +32,32 @@ class UnattendedRpmConf(rpmconf.RpmConf):
         self.unattended = kwargs.pop('unattended', None)
         super().__init__(*args, **kwargs)
 
-    def _handle_rpmnew(self, conf_file, other_file):
-        """
-        Depends on instance attribute `unattended`:
+    def _test_duplicate(self, conf_file, other_file):
+        if not (self.is_broken_symlink(conf_file) or self.is_broken_symlink(other_file)) \
+           and filecmp.cmp(conf_file, other_file):
+            return True
 
+        return False
+
+    def _handle_rpmnew(self, conf_file, other_file):
+        """Depends on instance attribute `unattended`:
+
+        * `diff` display diff for conf_file and other_file
         * `maintainer` install the package maintainer's version
         * `user` keep currently-installed version
 
         If attribute is not set, reverts to the original method
         """
 
-        if self.diff or not self.unattended:
-            super()._handle_rpmnew(conf_file, other_file)
+        if self._test_duplicate(conf_file, other_file):
+            self._remove(other_file)
             return
 
-        if self.unattended == 'maintainer':
+        if not self.unattended:
+            super()._handle_rpmnew(conf_file, other_file)
+        elif self.unattended == 'diff':
+            self.show_diff(conf_file, other_file)
+        elif self.unattended == 'maintainer':
             self._overwrite(other_file, conf_file)
         elif self.unattended == 'user':
             self._remove(other_file)
@@ -55,22 +66,22 @@ class UnattendedRpmConf(rpmconf.RpmConf):
         """
         Depends on instance attribute `unattended`:
 
+        * `diff` just display diff for conf_file and other_file
         * `maintainer` install (keep) the package maintainer's version
         * `user` return back to the original / saved file
 
         If attribute is not set, reverts to the original method
         """
 
-        if self.diff or not self.unattended:
-            super()._handle_rpmsave(conf_file, other_file)
-            return
-
-        if not (self.is_broken_symlink(conf_file) or self.is_broken_symlink(other_file)) \
-           and filecmp.cmp(conf_file, other_file):
+        if self._test_duplicate(conf_file, other_file):
             self._remove(other_file)
             return
 
-        if self.unattended == 'maintainer':
+        if not self.unattended:
+            super()._handle_rpmsave(conf_file, other_file)
+        elif self.unattended == 'diff':
+            self.show_diff(other_file, conf_file)
+        elif self.unattended == 'maintainer':
             self._remove(other_file)
         elif self.unattended == 'user':
             self._overwrite(other_file, conf_file)
@@ -84,7 +95,6 @@ class Rpmconf(dnf.Plugin):
         self.base = base
         self.packages = []
         self.frontend = None
-        self.diff = None
         self.unattended = None
 
     def config(self):
@@ -96,11 +106,6 @@ class Rpmconf(dnf.Plugin):
 
         conf = self.read_config(self.base.conf)
 
-        if conf.has_option('main', 'diff'):
-            self.diff = conf.getboolean('main', 'diff')
-        else:
-            self.diff = False
-
         if conf.has_option('main', 'frontend'):
             self.frontend = conf.get('main', 'frontend')
         else:
@@ -108,7 +113,7 @@ class Rpmconf(dnf.Plugin):
 
         if conf.has_option('main', 'unattended'):
             self.unattended = conf.get('main', 'unattended')
-            if self.unattended not in ('maintainer', 'user'):
+            if self.unattended not in ('diff', 'maintainer', 'user'):
                 self.unattended = None
         else:
             self.unattended = None
@@ -138,7 +143,6 @@ class Rpmconf(dnf.Plugin):
         rconf = UnattendedRpmConf(
             packages=self.packages,
             frontend=self.frontend,
-            diff=self.diff,
             unattended=self.unattended)
         try:
             rconf.run()

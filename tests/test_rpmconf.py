@@ -53,7 +53,6 @@ class RpmconfPluginStub(object):
     def __init__(self, prefix, pkgname, conf_file):
         self.packages = [pkgname]
         self.frontend = None
-        self.diff = None
         self.unattended = None
         self._interactive = True
         self._conf_file = conf_file
@@ -277,14 +276,14 @@ class TestRpmConf(unittest.TestCase):
         expected_last_line = "File {0} was removed by 3rd party. Skipping.".format(new_path)
         self.assertEqual(lines[-1], expected_last_line)
 
-    def test_diff_output(self):
+    def test_unattended_diff(self):
         self._create_conf()
         self._create_rpmnew()
         self._create_rpmsave()
 
         with self.rpmconf_plugin as rpmconf,\
                 mock.patch("sys.stdout", new_callable=StringIO) as stdout:
-            rpmconf.diff = True
+            rpmconf.unattended = 'diff'
             rpmconf.run()
 
             lines = stdout.getvalue().splitlines()
