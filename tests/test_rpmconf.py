@@ -276,6 +276,32 @@ class TestRpmConf(unittest.TestCase):
         expected_last_line = "File {0} was removed by 3rd party. Skipping.".format(new_path)
         self.assertEqual(lines[-1], expected_last_line)
 
+    def test_unattended_summary(self):
+        c_path, c_content = self._create_conf()
+        new_path, new_content = self._create_rpmnew()
+
+        with self.rpmconf_plugin as rpmconf,\
+                mock.patch("sys.stdout", new_callable=StringIO) as stdout:
+            rpmconf.unattended = 'summary'
+            rpmconf.run()
+
+            lines = stdout.getvalue().splitlines()
+
+        self.assertEqual(lines[0].split(' ')[-1], "'{0}'".format(new_path))
+        self.assertEqual(lines[1].split(' ')[-1], "'{0}'".format(c_path))
+
+        self.assertTrue(os.access(c_path, os.F_OK))
+        with open(c_path, 'rb') as f:
+            c_result = f.read()
+
+        self.assertEqual(c_result, c_content)
+
+        self.assertTrue(os.access(new_path, os.F_OK))
+        with open(new_path, 'rb') as f:
+            new_result = f.read()
+
+        self.assertEqual(new_result, new_content)
+
     def test_unattended_diff(self):
         self._create_conf()
         self._create_rpmnew()

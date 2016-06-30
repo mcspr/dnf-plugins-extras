@@ -39,10 +39,24 @@ class UnattendedRpmConf(rpmconf.RpmConf):
 
         return False
 
+    def _ls_conf_file(self, conf_file, other_file):
+        if other_file.endswith('rpmnew'):
+            msg = "Updated file from package maintainer"
+        elif other_file.endswith('rpmsave'):
+            msg = "Backup of file previously used by the package"
+        elif other_file.endswith('rpmorig'):
+            msg = "Backup of file previously created by user or system"
+        else:
+            msg = "Pending file"
+
+        print("{0} '{1}'".format(msg, other_file))
+        super()._ls_conf_file(conf_file, other_file)
+
     def _handle_rpmnew(self, conf_file, other_file):
         """Depends on instance attribute `unattended`:
 
         * `diff` display diff for conf_file and other_file
+        * `summary` display stats of both files and origin of other_file
         * `maintainer` install the package maintainer's version
         * `user` keep currently-installed version
 
@@ -59,6 +73,8 @@ class UnattendedRpmConf(rpmconf.RpmConf):
             self.show_diff(conf_file, other_file)
         elif self.unattended == 'maintainer':
             self._overwrite(other_file, conf_file)
+        elif self.unattended == 'summary':
+            self._ls_conf_file(conf_file, other_file)
         elif self.unattended == 'user':
             self._remove(other_file)
 
@@ -67,6 +83,7 @@ class UnattendedRpmConf(rpmconf.RpmConf):
         Depends on instance attribute `unattended`:
 
         * `diff` just display diff for conf_file and other_file
+        * `summary` display stats of both files and origin of other_file
         * `maintainer` install (keep) the package maintainer's version
         * `user` return back to the original / saved file
 
@@ -83,6 +100,8 @@ class UnattendedRpmConf(rpmconf.RpmConf):
             self.show_diff(other_file, conf_file)
         elif self.unattended == 'maintainer':
             self._remove(other_file)
+        elif self.unattended == 'summary':
+            self._ls_conf_file(conf_file, other_file)
         elif self.unattended == 'user':
             self._overwrite(other_file, conf_file)
 
@@ -113,7 +132,7 @@ class Rpmconf(dnf.Plugin):
 
         if conf.has_option('main', 'unattended'):
             self.unattended = conf.get('main', 'unattended')
-            if self.unattended not in ('diff', 'maintainer', 'user'):
+            if self.unattended not in ('diff', 'maintainer', 'summary', 'user'):
                 self.unattended = None
         else:
             self.unattended = None

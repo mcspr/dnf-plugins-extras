@@ -43,10 +43,10 @@ The minimal plugin configuration file should consists of `[main]` section with `
     When set to ``env``, the command to use is taken from the environment variable $MERGE.
 
 ``unattended``
-    either one of ``diff``, ``maintainer``, ``user``, default: Unset
+    either one of ``diff``, ``maintainer``, ``summary``, ``user``, default: Unset
 
     Defines how it will handle .rpmnew, .rpmsave and .rpmorig files without need of user interaction. ``maintainer`` will always replace user files with maintainer's files, ``user`` will always keep user modified files (or restore them from .rpmsave)
-    ``diff`` does not change any files and just displays their differences.
+    ``diff`` does not change any files and just displays their differences. ``summary`` displays stats and origin of the files.
 
 --------
 See Also
