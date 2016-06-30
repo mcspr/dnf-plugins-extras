@@ -28,6 +28,11 @@ from rpmconf import rpmconf
 
 class UnattendedRpmConf(rpmconf.RpmConf):
 
+    DISPLAY_MODES = ('diff', 'summary')
+    REPLACE_MODES = ('maintainer', 'user')
+
+    MODES = DISPLAY_MODES + REPLACE_MODES
+
     def __init__(self, *args, **kwargs):
         self.unattended = kwargs.pop('unattended', None)
         super().__init__(*args, **kwargs)
@@ -63,13 +68,16 @@ class UnattendedRpmConf(rpmconf.RpmConf):
         If attribute is not set, reverts to the original method
         """
 
-        if self._test_duplicate(conf_file, other_file):
+        if not self.unattended:
+            super()._handle_rpmnew(conf_file, other_file)
+            return
+
+        if self.unattended in self.REPLACE_MODES and \
+                self._test_duplicate(conf_file, other_file):
             self._remove(other_file)
             return
 
-        if not self.unattended:
-            super()._handle_rpmnew(conf_file, other_file)
-        elif self.unattended == 'diff':
+        if self.unattended == 'diff':
             self.show_diff(conf_file, other_file)
         elif self.unattended == 'maintainer':
             self._overwrite(other_file, conf_file)
@@ -90,13 +98,16 @@ class UnattendedRpmConf(rpmconf.RpmConf):
         If attribute is not set, reverts to the original method
         """
 
-        if self._test_duplicate(conf_file, other_file):
+        if not self.unattended:
+            super()._handle_rpmsave(conf_file, other_file)
+            return
+
+        if self.unattended in self.REPLACE_MODES and \
+                self._test_duplicate(conf_file, other_file):
             self._remove(other_file)
             return
 
-        if not self.unattended:
-            super()._handle_rpmsave(conf_file, other_file)
-        elif self.unattended == 'diff':
+        if self.unattended == 'diff':
             self.show_diff(other_file, conf_file)
         elif self.unattended == 'maintainer':
             self._remove(other_file)
@@ -132,7 +143,7 @@ class Rpmconf(dnf.Plugin):
 
         if conf.has_option('main', 'unattended'):
             self.unattended = conf.get('main', 'unattended')
-            if self.unattended not in ('diff', 'maintainer', 'summary', 'user'):
+            if self.unattended not in UnattendedRpmConf.MODES:
                 self.unattended = None
         else:
             self.unattended = None

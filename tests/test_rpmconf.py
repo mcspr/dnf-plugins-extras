@@ -302,6 +302,32 @@ class TestRpmConf(unittest.TestCase):
 
         self.assertEqual(new_result, new_content)
 
+    def test_unattended_skip_duplicate(self):
+        c_path, _ = self._create_conf()
+        orig_path, _ = self._create_rpmorig()
+
+        with self.rpmconf_plugin as rpmconf,\
+                mock.patch("sys.stdout", new_callable=StringIO) as stdout:
+            rpmconf.unattended = 'summary'
+            rpmconf.run()
+
+            lines = stdout.getvalue().splitlines()
+
+        self.assertGreater(len(lines), 0)
+        self.assertTrue(os.access(c_path, os.F_OK))
+        self.assertTrue(os.access(orig_path, os.F_OK))
+
+    def test_unattended_remove_duplicate(self):
+        c_path, _ = self._create_conf()
+        orig_path, _ = self._create_rpmorig()
+
+        with self.rpmconf_plugin as rpmconf:
+            rpmconf.unattended = 'maintainer'
+            rpmconf.run()
+
+        self.assertTrue(os.access(c_path, os.F_OK))
+        self.assertFalse(os.access(orig_path, os.F_OK))
+
     def test_unattended_diff(self):
         self._create_conf()
         self._create_rpmnew()
